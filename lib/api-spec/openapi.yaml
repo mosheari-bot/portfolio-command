@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: repls
+    description: Repl operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,141 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /repls:
+    get:
+      operationId: listRepls
+      tags: [repls]
+      summary: List all repls
+      parameters:
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of repls
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Repl"
+    post:
+      operationId: createRepl
+      tags: [repls]
+      summary: Create a new repl
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplInput"
+      responses:
+        "201":
+          description: Created repl
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repl"
+
+  /repls/stats:
+    get:
+      operationId: getReplStats
+      tags: [repls]
+      summary: Get dashboard stats
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplStats"
+
+  /repls/{id}:
+    get:
+      operationId: getRepl
+      tags: [repls]
+      summary: Get a repl by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: A repl
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repl"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateRepl
+      tags: [repls]
+      summary: Update a repl
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplUpdate"
+      responses:
+        "200":
+          description: Updated repl
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Repl"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteRepl
+      tags: [repls]
+      summary: Delete a repl
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /repls/{id}/run:
+    post:
+      operationId: runRepl
+      tags: [repls]
+      summary: Run repl code
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Run result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +171,86 @@ components:
       required:
         - status
 
+    Repl:
+      type: object
+      required: [id, name, language, code, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        language:
+          type: string
+        code:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ReplInput:
+      type: object
+      required: [name, language, code]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        language:
+          type: string
+          minLength: 1
+        code:
+          type: string
+
+    ReplUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        language:
+          type: string
+        code:
+          type: string
+
+    ReplStats:
+      type: object
+      required: [total, byLanguage, recentCount]
+      properties:
+        total:
+          type: integer
+        byLanguage:
+          type: array
+          items:
+            $ref: "#/components/schemas/LanguageCount"
+        recentCount:
+          type: integer
+
+    LanguageCount:
+      type: object
+      required: [language, count]
+      properties:
+        language:
+          type: string
+        count:
+          type: integer
+
+    RunResult:
+      type: object
+      required: [output, exitCode, executionTimeMs]
+      properties:
+        output:
+          type: string
+        exitCode:
+          type: integer
+        executionTimeMs:
+          type: integer
+        error:
+          type: ["string", "null"]

@@ -1,6 +1,5 @@
 {
-  "buildCommand": "python3 setup_portfolio.py && npm install && vite build",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite",
-  "installCommand": "npm install"
+  "framework": "vite"
 }

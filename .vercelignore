@@ -1,5 +1,7 @@
-setup_portfolio.py/ntemp-repo/
+setup_portfolio.py
+temp-repo/
 artifacts/
-scripts/ills/
+scripts/
+lib/
 .agents/
-portfoli/
+portfolio/

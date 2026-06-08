@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { login } from './firebase.js';
-import { useTheme, btn, inp } from './theme.js';
+import { useTheme, btn, inp } from './theme.jsx';
 
 export default function Login() {
   const { t } = useTheme();

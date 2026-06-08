@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePC } from './App.jsx';
-import { useTheme, btn, card } from './theme.js';
+import { useTheme, btn, card } from './theme.jsx';
 import TasksTab    from './TasksTab.jsx';
 import SavingsTab  from './SavingsTab.jsx';
 import FinancialsTab from './FinancialsTab.jsx';

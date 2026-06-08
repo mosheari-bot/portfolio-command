@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTheme } from './theme.js';
+import { useTheme } from './theme.jsx';
 import { CHECKLIST_CATS, CHECKLIST_ITEMS } from './data.js';
 
 export default function ChecklistTab({ prop, updateProp }) {

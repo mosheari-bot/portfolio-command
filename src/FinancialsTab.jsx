@@ -1,4 +1,4 @@
-import { useTheme } from './theme.js';
+import { useTheme } from './theme.jsx';
 import { FIN_FIELDS, FIN_GROUPS, fmt$, parseDollar, calcNOI, calcEquity, calcRehabLeft } from './data.js';
 
 export default function FinancialsTab({ prop, updateProp }) {

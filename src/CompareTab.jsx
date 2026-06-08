@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTheme, btn } from './theme.js';
+import { useTheme, btn } from './theme.jsx';
 import { COMPARE_ROWS, STATUS_BADGE, defStrategy, uid } from './data.js';
 
 export default function CompareTab({ prop, updateProp }) {

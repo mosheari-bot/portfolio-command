@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTheme, btn } from './theme.js';
+import { useTheme, btn } from './theme.jsx';
 
 export default function NotesTab({ prop, updateProp }) {
   const { t } = useTheme();

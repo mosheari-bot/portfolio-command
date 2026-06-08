@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { usePC } from './App.jsx';
-import { useTheme, btn, card } from './theme.js';
+import { useTheme, btn, card } from './theme.jsx';
 import { parseDollar, fmt$, defProperty, defChecklist, defFinancials, uid } from './data.js';
 
 export default function Dashboard({ onSelectProp }) {

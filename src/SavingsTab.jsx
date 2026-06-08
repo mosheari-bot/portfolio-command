@@ -1,4 +1,4 @@
-import { useTheme, card } from './theme.js';
+import { useTheme, card } from './theme.jsx';
 import { parseDollar, fmt$, fmtHrs } from './data.js';
 
 export default function SavingsTab({ prop }) {

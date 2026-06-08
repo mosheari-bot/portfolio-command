@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTheme, btn, inp } from './theme.js';
+import { useTheme, btn, inp } from './theme.jsx';
 import { uid, convertDriveUrl } from './data.js';
 
 export default function PhotosTab({ prop, updateProp }) {

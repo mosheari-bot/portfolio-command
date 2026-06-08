@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, createContext, useContext } from 'react';
-import { ThemeProvider, useTheme, btn } from './theme.js';
+import { ThemeProvider, useTheme, btn } from './theme.jsx';
 import { onAuth, logout, saveData, subscribeToData } from './firebase.js';
 import { seedData, uid } from './data.js';
 import Login from './Login.jsx';

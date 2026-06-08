@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTheme, btn, inp } from './theme.js';
+import { useTheme, btn, inp } from './theme.jsx';
 import { PRIORITY, STATUS, uid, parseDollar, fmt$ } from './data.js';
 
 export default function TasksTab({ prop, updateProp }) {

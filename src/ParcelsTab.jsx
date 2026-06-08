@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTheme, btn, inp } from './theme.js';
+import { useTheme, btn, inp } from './theme.jsx';
 import { REL, CONS, defParcel } from './data.js';
 
 export default function ParcelsTab({ prop, updateProp }) {

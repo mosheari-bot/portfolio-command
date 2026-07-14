@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Portfolio Command — ID Repair</title>
+<style>
+  body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; max-width: 920px; margin: 40px auto;
+         padding: 0 20px; background: #eef1f6; color: #16203a; line-height: 1.5; }
+  h1 { font-size: 20px; letter-spacing: .08em; font-family: 'Courier New', monospace; }
+  .card { background: #fff; border: 1px solid #e7edf5; border-radius: 14px; padding: 20px; margin-bottom: 16px;
+          box-shadow: 0 4px 14px rgba(22,32,58,.10); }
+  .step { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #7a879c; text-transform: uppercase; }
+  button { padding: 9px 18px; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 600;
+           background: #16203a; color: #fff; border: none; }
+  button:disabled { background: #d6deea; color: #7a879c; cursor: not-allowed; }
+  button.danger { background: #fdecec; color: #c81e1e; border: 1px solid #c81e1e; }
+  button.danger:disabled { background: #f5f7fb; color: #b8c0cc; border-color: #e7edf5; }
+  input { padding: 10px 14px; border: 1px solid #d6deea; border-radius: 8px; font: inherit; min-width: 240px; }
+  pre { background: #f1f4f9; border: 1px solid #d6deea; border-radius: 8px; padding: 14px;
+        overflow-x: auto; font-size: 12px; max-height: 420px; }
+  .warn { background: #fff6e6; border: 1.5px solid #f0b429; color: #b06a00; border-radius: 8px;
+          padding: 12px 14px; font-size: 13px; }
+  .ok { color: #127a45; font-weight: 700; }
+  .bad { color: #c81e1e; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>PORTFOLIO COMMAND — ID REPAIR</h1>
+
+<div class="card">
+  <div class="warn">
+    This tool rewrites the live <code>portfolio/main</code> Firestore document. It will not let you write
+    until you have downloaded a backup and reviewed the dry run. Steps must be run in order.
+  </div>
+</div>
+
+<div class="card">
+  <div class="step">Step 1 — Sign in</div>
+  <p>This page runs as its own Firebase app instance, so it needs its own sign-in (the same
+     email and password you use for the app).</p>
+  <p>
+    <input id="email" type="email" placeholder="email" autocomplete="username" />
+    <input id="password" type="password" placeholder="password" autocomplete="current-password" />
+    <button id="signin">Sign In</button>
+  </p>
+  <div id="authStatus"></div>
+</div>
+
+<div class="card">
+  <div class="step">Step 2 — Back up</div>
+  <p>Loads <code>portfolio/main</code> and downloads it as JSON. Nothing is written.</p>
+  <button id="backup" disabled>Load &amp; Download Backup</button>
+  <div id="backupStatus"></div>
+</div>
+
+<div class="card">
+  <div class="step">Step 3 — Dry run</div>
+  <p>Scans for duplicate IDs and shows exactly what would change. Nothing is written.</p>
+  <button id="dryrun" disabled>Analyze</button>
+  <div id="dryrunStatus"></div>
+  <pre id="report" hidden></pre>
+</div>
+
+<div class="card">
+  <div class="step">Step 4 — Apply</div>
+  <p>Writes the repaired document back to Firestore. Enabled only after a backup and a dry run
+     that found something to fix.</p>
+  <button id="apply" class="danger" disabled>Apply Repair to Firestore</button>
+  <div id="applyStatus"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+
+// Same project as src/firebase.js. Named instance so it doesn't collide with the app's default app.
+const firebaseConfig = {
+  apiKey: "AIzaSyBHIktmREJS4FoZB9XqNclsCD9hAE2-8CY",
+  authDomain: "portfolio-command.firebaseapp.com",
+  projectId: "portfolio-command",
+  storageBucket: "portfolio-command.firebasestorage.app",
+  messagingSenderId: "594502999319",
+  appId: "1:594502999319:web:7cdf400dfb91b222e9ab52",
+};
+const app  = initializeApp(firebaseConfig, 'id-repair');
+const db   = getFirestore(app);
+const auth = getAuth(app);
+const DATA_DOC = doc(db, 'portfolio', 'main');
+
+// Arrays whose records are addressed by id somewhere in the UI.
+// NOT included:
+//   checklist[] - ids are static slugs from CHECKLIST_ITEMS ('cv', 'cp', ...) and are meant to repeat
+//                 across properties. Rewriting them would break ChecklistTab.
+//   docs[]      - records have no id; DocsTab addresses them by array index.
+const PROPERTY_ARRAYS = ['tasks', 'parcels', 'drawings', 'photos', 'strategies'];
+
+const newId = () => crypto.randomUUID();
+const $ = id => document.getElementById(id);
+
+let loaded = null;   // the document as fetched
+let repaired = null; // the rewritten document, after a dry run
+let backedUp = false;
+
+/**
+ * Within a single array, the first record to claim an id keeps it; any later record
+ * with an id already seen (or with no id at all) gets a fresh one. Scoping is per
+ * array because every id-keyed update/delete in the app is scoped that way too —
+ * e.g. TasksTab only ever maps over one property's tasks.
+ */
+function repairArray(records, where, changes) {
+  const seen = new Set();
+  return (records || []).map((rec, i) => {
+    const id = rec?.id;
+    if (id && !seen.has(id)) { seen.add(id); return rec; }
+    const fresh = newId();
+    changes.push({
+      where,
+      index: i,
+      label: rec?.text || rec?.label || rec?.name || rec?.caption || '(unlabeled)',
+      from: id ? String(id) : '(missing)',
+      to: fresh,
+    });
+    seen.add(fresh);
+    return { ...rec, id: fresh };
+  });
+}
+
+function repairDoc(data) {
+  const changes = [];
+  const notes = [];
+
+  const properties = (data.properties || []).map(prop => {
+    const next = { ...prop };
+    for (const key of PROPERTY_ARRAYS) {
+      if (Array.isArray(prop[key])) {
+        next[key] = repairArray(prop[key], `${prop.id}.${key}`, changes);
+      }
+    }
+    return next;
+  });
+
+  const workers = Array.isArray(data.workers)
+    ? repairArray(data.workers, 'workers', changes)
+    : data.workers;
+
+  // Property ids are human-chosen ('ARM', 'NCA') and are referenced by `activeId` in App.jsx,
+  // so they are reported but never rewritten - renaming one silently is worse than the duplicate.
+  const propSeen = new Set();
+  for (const p of properties) {
+    if (propSeen.has(p.id)) notes.push(`Duplicate PROPERTY id "${p.id}" - NOT auto-fixed. Rename it in the UI.`);
+    propSeen.add(p.id);
+  }
+
+  return { next: { ...data, properties, workers }, changes, notes };
+}
+
+$('signin').onclick = async () => {
+  $('authStatus').textContent = 'Signing in…';
+  try {
+    await signInWithEmailAndPassword(auth, $('email').value.trim(), $('password').value);
+    $('authStatus').innerHTML = `<span class="ok">Signed in as ${auth.currentUser.email}</span>`;
+    $('backup').disabled = false;
+  } catch (e) {
+    $('authStatus').innerHTML = `<span class="bad">Sign-in failed: ${e.code || e.message}</span>`;
+  }
+};
+
+$('backup').onclick = async () => {
+  $('backupStatus').textContent = 'Loading…';
+  try {
+    const snap = await getDoc(DATA_DOC);
+    if (!snap.exists()) { $('backupStatus').innerHTML = '<span class="bad">portfolio/main does not exist.</span>'; return; }
+    loaded = snap.data();
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const url = URL.createObjectURL(new Blob([JSON.stringify(loaded, null, 2)], { type: 'application/json' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: `portfolio-main-backup-${stamp}.json` });
+    a.click();
+    URL.revokeObjectURL(url);
+
+    backedUp = true;
+    $('dryrun').disabled = false;
+    const props = (loaded.properties || []).length;
+    $('backupStatus').innerHTML =
+      `<span class="ok">Backup downloaded.</span> Loaded ${props} properties, ${(loaded.workers || []).length} workers.`;
+  } catch (e) {
+    $('backupStatus').innerHTML = `<span class="bad">Load failed: ${e.code || e.message}</span>`;
+  }
+};
+
+$('dryrun').onclick = () => {
+  const { next, changes, notes } = repairDoc(loaded);
+  repaired = next;
+
+  const lines = [];
+  if (!changes.length) lines.push('No duplicate or missing IDs found. Nothing to repair.');
+  else {
+    lines.push(`${changes.length} record(s) would be reassigned a fresh ID:`, '');
+    for (const c of changes) lines.push(`  ${c.where}[${c.index}]  ${c.from} -> ${c.to}\n      ${c.label}`);
+  }
+  if (notes.length) lines.push('', 'Needs manual attention:', ...notes.map(n => '  ' + n));
+
+  $('report').hidden = false;
+  $('report').textContent = lines.join('\n');
+  $('apply').disabled = !(backedUp && changes.length);
+  $('dryrunStatus').innerHTML = changes.length
+    ? `<span class="bad">${changes.length} collision(s) found.</span> Review below, then apply.`
+    : '<span class="ok">Clean — no repair needed.</span>';
+};
+
+$('apply').onclick = async () => {
+  if (!confirm('Overwrite portfolio/main with the repaired document?')) return;
+  $('apply').disabled = true;
+  $('applyStatus').textContent = 'Writing…';
+  try {
+    await setDoc(DATA_DOC, { ...repaired, updatedAt: Date.now() });
+    $('applyStatus').innerHTML = '<span class="ok">Done. Reload the app to pick up the repaired IDs.</span>';
+  } catch (e) {
+    $('applyStatus').innerHTML = `<span class="bad">Write failed: ${e.code || e.message}</span>`;
+    $('apply').disabled = false;
+  }
+};
+</script>
+</body>
+</html>

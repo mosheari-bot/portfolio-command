@@ -1,6 +1,10 @@
-// ─── COUNTERS ───────────────────────────────────
-let _id = 1000;
-export const uid = () => String(++_id);
+// ─── IDS ────────────────────────────────────────
+// Must be unique across sessions: a counter would restart on every page load and
+// collide with ids already persisted in Firestore (tasks/parcels/drawings are
+// updated and deleted by id, so duplicates edit and delete each other).
+export const uid = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 
 // ─── HELPERS ────────────────────────────────────
 export function parseDollar(v) {
